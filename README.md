@@ -1,3 +1,7 @@
+## Changes compared to base repository:
+- 1.0.0
+  - The base class is now selectable in the menu if it is not an interface/abstract class.
+
 # UnitySerializedReferenceUI
 The UI for Unity's SerealizedReference attribute. It allows to change the instance type of field right in editor.
 
