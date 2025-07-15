@@ -41,30 +41,48 @@ public static class ManagedReferenceUtility
     {
         var appropriateTypes = new List<Type>();
 
+        // New change: also include the base type if it is valid.
+        if (ShouldTypeBeSelectable(fieldType))
+            appropriateTypes.Add(fieldType);
+
         // Get and filter all appropriate types
         var derivedTypes = TypeCache.GetTypesDerivedFrom(fieldType);
         foreach (var type in derivedTypes)
         {
-            // Skips unity engine Objects (because they are not serialized by SerializeReference)
-            if (type.IsSubclassOf(typeof(Object)))
-                continue;
-            // Skip abstract classes because they should not be instantiated
-            if (type.IsAbstract)
-                continue;
-			// Skip generic classes because they can not be instantiated
-            if (type.ContainsGenericParameters)
-                continue;
-            // Skip types that has no public empty constructors (activator can not create them)    
-            if (type.IsClass && type.GetConstructor(Type.EmptyTypes) == null) // Structs still can be created (strangely)
-                continue;
-            // Filter types by provided filters if there is ones
-            if (filters != null && filters.All(f => f == null || f.Invoke(type)) == false) 
-                continue;
-
-            appropriateTypes.Add(type);
+            if (ShouldTypeBeSelectable(type))
+                appropriateTypes.Add(type);
         }
 
         return appropriateTypes;
+    }
+
+    private static bool ShouldTypeBeSelectable(Type type, Type fieldType, List<Func<Type, bool>> filters)
+    {
+        // Skip interfaces since they cannot be instantiated.
+        if (type.IsInterface)
+            return false;
+
+        // Skips unity engine Objects (because they are not serialized by SerializeReference)
+        if (type.IsSubclassOf(typeof(Object)))
+            return false;
+
+        // Skip abstract classes because they should not be instantiated
+        if (type.IsAbstract)
+            return false;
+
+        // Skip generic classes because they can not be instantiated
+        if (type.ContainsGenericParameters)
+            return false;
+
+        // Skip types that has no public empty constructors (activator can not create them)    
+        if (type.IsClass && type.GetConstructor(Type.EmptyTypes) == null) // Structs still can be created (strangely)
+            return false;
+
+        // Filter types by provided filters if there is ones
+        if (filters != null && filters.All(f => f == null || f.Invoke(type)) == false) 
+            return false;
+
+        return true;
     }
     
     /// Gets real type of managed reference
