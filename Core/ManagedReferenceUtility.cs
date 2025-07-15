@@ -42,14 +42,14 @@ public static class ManagedReferenceUtility
         var appropriateTypes = new List<Type>();
 
         // New change: also include the base type if it is valid.
-        if (ShouldTypeBeSelectable(fieldType))
+        if (ShouldTypeBeSelectable(fieldType, fieldType, filters))
             appropriateTypes.Add(fieldType);
 
         // Get and filter all appropriate types
         var derivedTypes = TypeCache.GetTypesDerivedFrom(fieldType);
         foreach (var type in derivedTypes)
         {
-            if (ShouldTypeBeSelectable(type))
+            if (ShouldTypeBeSelectable(type, fieldType, filters))
                 appropriateTypes.Add(type);
         }
 
