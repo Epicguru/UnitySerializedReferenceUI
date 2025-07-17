@@ -3,6 +3,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using UnityEditor;
 using UnityEngine;
 using Object = UnityEngine.Object;
@@ -12,7 +13,7 @@ public static class ManagedReferenceUtility
     /// Creates instance of passed type and assigns it to managed reference
     public static object AssignNewInstanceOfTypeToManagedReference(this SerializedProperty serializedProperty, Type type)
     {
-        var instance = Activator.CreateInstance(type);
+        object instance = Activator.CreateInstance(type, true);
         
         serializedProperty.serializedObject.Update(); 
         serializedProperty.managedReferenceValue = instance;
@@ -42,21 +43,21 @@ public static class ManagedReferenceUtility
         var appropriateTypes = new List<Type>();
 
         // New change: also include the base type if it is valid.
-        if (ShouldTypeBeSelectable(fieldType, fieldType, filters))
+        if (ShouldTypeBeSelectable(fieldType, filters))
             appropriateTypes.Add(fieldType);
 
         // Get and filter all appropriate types
         var derivedTypes = TypeCache.GetTypesDerivedFrom(fieldType);
         foreach (var type in derivedTypes)
         {
-            if (ShouldTypeBeSelectable(type, fieldType, filters))
+            if (ShouldTypeBeSelectable(type, filters))
                 appropriateTypes.Add(type);
         }
 
         return appropriateTypes;
     }
 
-    private static bool ShouldTypeBeSelectable(Type type, Type fieldType, List<Func<Type, bool>> filters)
+    private static bool ShouldTypeBeSelectable(Type type, List<Func<Type, bool>> filters)
     {
         // Skip interfaces since they cannot be instantiated.
         if (type.IsInterface)
@@ -74,9 +75,13 @@ public static class ManagedReferenceUtility
         if (type.ContainsGenericParameters)
             return false;
 
-        // Skip types that has no public empty constructors (activator can not create them)    
-        if (type.IsClass && type.GetConstructor(Type.EmptyTypes) == null) // Structs still can be created (strangely)
-            return false;
+        // Skip classes that have no parameterless constructor, structs are always fine since they always have parameterless constructor.
+        if (type.IsClass)
+        {
+            bool hasParameterlessConstructor = type.GetConstructor(BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Instance, null, Type.EmptyTypes, null) != null;
+            if (!hasParameterlessConstructor)
+                return false;
+        }
 
         // Filter types by provided filters if there is ones
         if (filters != null && filters.All(f => f == null || f.Invoke(type)) == false) 
